@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="moon">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>爱丽丝的贴吧工具 · 管理台</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="主导航">
+      <a class="brand" href="#overview"><img src="./logo.svg" alt=""><span>ALICE<span class="brand-sub">爱丽丝的贴吧工具</span></span></a>
+      <div class="nav-caption">你的贴吧观测站</div>
+      <nav>
+        <button class="nav-item active" data-page="overview"><span aria-hidden="true">◈</span>概览 <span class="nav-index">01</span></button>
+        <button class="nav-item" data-page="subscriptions"><span aria-hidden="true">◎</span>订阅管理 <span class="nav-index">02</span></button>
+        <button class="nav-item" data-page="config"><span aria-hidden="true">⚙</span>功能配置 <span class="nav-index">03</span></button>
+        <button class="nav-item" data-page="events"><span aria-hidden="true">≋</span>运行活动 <span class="nav-index">04</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <label for="theme-select">界面主题</label>
+        <select id="theme-select"><option value="moon">月光 · 雾蓝</option><option value="night">曜夜 · 深海</option><option value="sakura">樱雾 · 玫瑰</option><option value="forest">森林 · 苔绿</option></select>
+        <div class="sidebar-note"><span class="tiny-dot"></span> 由 AstrBot 登录保护</div>
+      </div>
+    </aside>
+    <main>
+      <header class="topbar"><div class="breadcrumb">工作空间 <span>/</span> <strong id="breadcrumb">概览</strong></div><div class="top-actions"><span class="connection" id="connection">正在连接</span><button id="refresh-button" class="icon-button" aria-label="刷新数据" title="刷新数据">↻</button></div></header>
+      <div id="global-error" class="notice error" role="alert" hidden></div>
+      <section id="page-overview" class="page">
+        <div class="hero"><div><div class="eyebrow">ALICE / TIEBA OBSERVATORY</div><h1>让值得关注的更新，<br>及时来到你身边。</h1><p>把链接变成清晰的内容，让新帖与楼主更新各归其位。</p><div class="hero-actions"><button class="button primary" id="hero-add">＋ 新建订阅</button><button class="button subtle" data-go="config">调整功能 <span>↗</span></button></div></div><div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-dot"></div><img src="./logo.svg" alt=""><div class="art-note">A little signal.<br>A closer connection.</div></div></div>
+        <div id="disabled-banner" class="notice" hidden><strong>推送总开关已关闭</strong><span>订阅仍会保留。到功能配置中开启“关注与追更推送”，保存后重载插件即可运行。</span><button data-go="config">前往配置 →</button></div>
+        <div class="stats"><article><span>全部订阅</span><strong id="stat-total">—</strong><small>你正在关注的用户与帖子</small></article><article><span>启用订阅</span><strong id="stat-active">—</strong><small>等待下一次自动检测</small></article><article><span>待投递更新</span><strong id="stat-pending">—</strong><small>发送成功后才确认完成</small></article><article><span>监测状态</span><strong class="stat-text" id="stat-running">连接中</strong><small id="stat-lastcheck">尚未检测</small></article></div>
+        <div class="overview-grid"><article class="panel"><div class="panel-heading"><div><div class="eyebrow">WATCHLIST</div><h2>最近的订阅</h2></div><button class="text-button" data-go="subscriptions">查看全部 ↗</button></div><div id="overview-subscriptions" class="list-area"><div class="empty">正在读取订阅…</div></div></article><article class="panel"><div class="panel-heading"><div><div class="eyebrow">ACTIVITY</div><h2>最近活动</h2></div><button class="text-button" data-go="events">更多 ↗</button></div><div id="overview-events" class="list-area"><div class="empty">正在读取活动…</div></div></article></div>
+        <div class="guide-card"><div class="guide-icon">✦</div><div><strong>从一次关注开始</strong><p>“关注用户”检测新发布的主题帖；“追踪楼主”检测指定帖子里楼主新增的楼层。首次检查建立基线，不推送已有内容。</p></div></div>
+      </section>
+      <section id="page-subscriptions" class="page" hidden>
+        <div class="page-title"><div><div class="eyebrow">STAY IN THE LOOP</div><h1>订阅管理</h1><p>管理关注对象、接收会话，以及你想看到的更新。</p></div><button class="button primary" id="add-subscription">＋ 新建订阅</button></div>
+        <div class="toolbar"><div class="search-wrap"><span aria-hidden="true">⌕</span><input id="subscription-search" type="search" placeholder="搜索名称、目标或接收会话" aria-label="搜索订阅"></div><select id="kind-filter" aria-label="按订阅类型筛选"><option value="all">全部类型</option><option value="user">关注用户</option><option value="thread">追踪楼主</option></select><button class="button subtle" id="check-all">↻ 检测全部</button></div>
+        <div class="notice compact"><strong>接收会话怎么填？</strong><span>在目标群聊或私聊发送“/爱丽丝贴吧 会话”，复制机器人返回的 UMO。请使用真实 UID，不要填写昵称。</span></div>
+        <div id="subscription-list" class="subscription-grid"></div>
+      </section>
+      <section id="page-config" class="page" hidden>
+        <div class="page-title"><div><div class="eyebrow">MAKE IT YOURS</div><h1>功能配置</h1><p>按需开启解析、推送、卡片、下载与更多能力。</p></div><button class="button primary" id="save-config">保存配置</button></div>
+        <div class="notice compact"><strong>保存后需要重载插件</strong><span>在 AstrBot 插件管理中重载「爱丽丝的贴吧工具」，让设置完整生效。Cookie 与密钥不会显示，留空会保留原值。</span></div>
+        <div class="search-wrap config-search"><span aria-hidden="true">⌕</span><input id="config-search" type="search" placeholder="查找设置，例如推送、皮肤、Cookie" aria-label="搜索配置"></div>
+        <div id="config-groups" class="config-groups"></div>
+        <div class="maintenance panel" id="maintenance" hidden><div><h2>缓存维护</h2><p>仅清理本插件的媒体缓存。存在正在处理的媒体时会拒绝清理。</p></div><button class="button subtle" id="clear-cache">清理媒体缓存</button></div>
+      </section>
+      <section id="page-events" class="page" hidden>
+        <div class="page-title"><div><div class="eyebrow">EVERY SIGNAL HAS A STORY</div><h1>运行活动</h1><p>查看最近 100 条监测、基线和投递记录。</p></div><button class="button subtle" id="refresh-events">↻ 刷新活动</button></div>
+        <div class="toolbar"><select id="event-filter" aria-label="按活动等级筛选"><option value="all">所有活动</option><option value="error">错误</option><option value="warning">提示</option><option value="info">正常</option></select><span class="muted">这里展示推送活动；完整错误详情见 AstrBot 日志。</span></div><article class="panel"><div id="events-list"></div></article>
+      </section>
+      <footer>ALICE TIEBA TOOLS <span>把每次更新，留给真正关心的人。</span></footer>
+    </main>
+  </div>
+  <dialog id="subscription-dialog" aria-labelledby="dialog-title"><form id="subscription-form"><div class="dialog-heading"><div><div class="eyebrow">NEW CONNECTION</div><h2 id="dialog-title">新建订阅</h2></div><button type="button" id="dialog-close" class="icon-button" aria-label="关闭">×</button></div><div class="kind-options"><label><input type="radio" name="kind" value="user" checked><span><strong>◎ 关注用户</strong><small>接收新发布的主题帖</small></span></label><label><input type="radio" name="kind" value="thread"><span><strong>◈ 追踪楼主</strong><small>接收楼主新增的楼层</small></span></label></div><label class="field"><span id="target-label">贴吧用户 UID</span><input id="sub-target" required maxlength="200" placeholder="填写数字 UID"><small id="target-hint">UID 是用户的数字标识；昵称或贴吧等级不适用。</small></label><label class="field"><span>订阅名称 <small>可选</small></span><input id="sub-label" maxlength="80" placeholder="给这次关注起一个名字"></label><label class="field"><span>接收会话 UMO</span><input id="sub-session" required maxlength="500" placeholder="平台ID:GroupMessage:群号"><small>在目标会话发送“/爱丽丝贴吧 会话”获取，不要只填群号。</small></label><label class="field"><span>关键词 <small>可选</small></span><textarea id="sub-keywords" rows="2" placeholder="每行一个；留空接收所有更新"></textarea><small>只推送包含任一关键词的更新。建议先留空确认接收正常。</small></label><div id="dialog-error" class="notice error compact" role="alert" hidden></div><div class="dialog-footer"><button type="button" id="dialog-cancel" class="button subtle">取消</button><button type="submit" class="button primary" id="submit-subscription">创建订阅</button></div></form></dialog>
+  <dialog id="confirm-dialog"><form method="dialog"><h2 id="confirm-title">确认操作</h2><p id="confirm-text"></p><div class="dialog-footer"><button value="cancel" class="button subtle">取消</button><button value="confirm" class="button danger">确认</button></div></form></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

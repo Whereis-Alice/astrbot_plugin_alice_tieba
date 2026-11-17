@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+<title id="title">爱丽丝的贴吧工具：兔耳信笺</title>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#224c69"/><stop offset="1" stop-color="#102c43"/></linearGradient><linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#d9edf2"/></linearGradient></defs>
+<rect x="16" y="16" width="480" height="480" rx="120" fill="url(#bg)"/>
+<circle cx="256" cy="263" r="183" fill="none" stroke="#76b7c8" stroke-width="2" opacity=".23"/>
+<path d="M200 183C173 147 160 81 180 73c21-8 48 47 56 109m32-2c9-55 36-106 55-97 21 10 4 72-23 103" fill="url(#paper)"/>
+<path d="M191 94c13 14 28 52 32 77m76-69c-11 14-21 39-26 66" stroke="#79b6c8" stroke-width="10" stroke-linecap="round"/>
+<path d="M143 190c-29 0-47 21-47 48v92c0 30 18 48 48 48h36l-16 51 72-51h131c30 0 48-19 48-48v-92c0-28-21-48-48-48z" fill="url(#paper)"/>
+<path d="m211 323 43-90 43 90m-69-32h50" fill="none" stroke="#24566f" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="m359 134 7 19 20 7-20 7-7 20-7-20-19-7 19-7z" fill="#d9af6a"/>
+<circle cx="147" cy="156" r="5" fill="#a0cfda"/><circle cx="375" cy="410" r="5" fill="#a0cfda"/>
+</svg>
