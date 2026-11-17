@@ -4,9 +4,11 @@ import importlib.util
 import asyncio
 import shutil
 import subprocess
+import sys
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import unittest
+from unittest.mock import patch as mock_patch
 
 from quart import Quart, g
 
@@ -56,6 +58,11 @@ class NativeBridgeContractTests(unittest.TestCase):
 
 class ManagementAPITests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        # Explicitly model AstrBot 4.25. A newer installed SDK can expose
+        # Starlette's API, which must not run inside this Quart test fixture.
+        legacy_patch = mock_patch.dict(sys.modules, {"astrbot.api.web": None})
+        legacy_patch.start()
+        self.addCleanup(legacy_patch.stop)
         self.app = Quart(__name__)
         self.plugin = SimpleNamespace(context=SimpleNamespace(registered_web_apis=[]))
         self.webui = module.WebUI(self.plugin, {}, SimpleNamespace())
@@ -127,6 +134,41 @@ class ManagementAPITests(unittest.IsolatedAsyncioTestCase):
         result = await self.webui._execute(operation)
         self.assertEqual(result[2], 401)
         self.assertFalse(self.webui._active_requests)
+
+
+class NativeManagementAPITests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.official_web = ModuleType("astrbot.api.web")
+        self.official_web.request = SimpleNamespace(username="admin", method="POST", headers={"Host": "astrbot.example", "Content-Length": "2"})
+
+        async def body():
+            return b"{}"
+
+        self.official_web.request.body = body
+        self.official_web.json_response = lambda data=None, status_code=200, headers=None: {"body": data, "status_code": status_code}
+        native_patch = mock_patch.dict(sys.modules, {"astrbot.api.web": self.official_web})
+        native_patch.start()
+        self.addCleanup(native_patch.stop)
+        plugin = SimpleNamespace(context=SimpleNamespace(registered_web_apis=[]))
+        self.webui = module.WebUI(plugin, {"tieba": {"cookie": "private-cookie"}}, SimpleNamespace())
+
+    async def test_native_context_requires_authenticated_username(self):
+        self.official_web.request.username = None
+        response = await self.webui.get_config()
+        self.assertEqual(response["status_code"], 401)
+        self.assertEqual(response["body"]["status"], "error")
+
+    async def test_native_body_reads_bounded_json_and_redacts_config(self):
+        request = await self.webui._request()
+        self.assertEqual(await self.webui._body(request), {})
+        response = await self.webui.get_config()
+        self.assertEqual(response["status_code"], 200)
+        self.assertEqual(response["body"]["data"]["config"]["tieba"]["cookie"], "")
+
+    async def test_native_context_rejects_cross_origin_post(self):
+        self.official_web.request.headers["Origin"] = "https://attacker.example"
+        response = await self.webui.get_config()
+        self.assertEqual(response["status_code"], 401)
 
 
 if __name__ == "__main__":
