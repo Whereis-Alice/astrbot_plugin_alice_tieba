@@ -68,8 +68,8 @@ class StandaloneConfigTests(unittest.TestCase):
         self.assertFalse(config.message.hot_comments.show_in_text)
         self.assertFalse(config.translation.enabled)
         self.assertFalse(config.trigger.auto_parse)
-        self.assertEqual(config.trigger.keywords, ["爱丽丝贴吧解析", "爱丽丝解析贴吧"])
-        self.assertEqual(config.admin.clean_cache_keyword, "清理爱丽丝贴吧缓存")
+        self.assertEqual(config.trigger.keywords, ["贴吧解析", "解析贴吧"])
+        self.assertEqual(config.admin.clean_cache_keyword, "清理贴吧缓存")
 
     def test_default_uploads_original_and_disables_compression(self):
         config = make_config()
@@ -85,6 +85,42 @@ class StandaloneConfigTests(unittest.TestCase):
         self.assertEqual(
             DownloadConfig().transcode_mode, config.download.transcode_mode
         )
+
+    def test_upgrade_migrates_old_commands_once_and_saves(self):
+        class SavedConfig(dict):
+            saves = 0
+
+            def save_config(self):
+                self.saves += 1
+
+        raw = SavedConfig({
+            "trigger": {"auto_parse": False, "reply_trigger": True, "keywords": [
+                "爱丽丝贴吧解析", "爱丽丝解析贴吧", "自定义解析", "贴吧解析",
+            ]},
+            "admin": {"clean_cache_keyword": "清理爱丽丝贴吧缓存"},
+            "message": {"archive": {"command": "爱丽丝贴吧打包"}},
+        })
+        config = make_config(raw)
+        self.assertEqual(config.trigger.keywords, ["贴吧解析", "解析贴吧", "自定义解析"])
+        self.assertFalse(config.trigger.auto_parse)
+        self.assertTrue(config.trigger.reply_trigger)
+        self.assertEqual(config.admin.clean_cache_keyword, "清理贴吧缓存")
+        self.assertEqual(config.message.archive.command, "贴吧打包")
+        self.assertEqual(raw.saves, 1)
+        make_config(raw)
+        self.assertEqual(raw.saves, 1)
+
+    def test_upgrade_preserves_custom_commands_and_disabled_keywords(self):
+        raw = {
+            "trigger": {"auto_parse": False, "keywords": []},
+            "admin": {"clean_cache_keyword": "自定义清缓存"},
+            "message": {"archive": {"command": "自定义归档"}},
+        }
+        config = make_config(raw)
+        self.assertFalse(config.trigger.should_parse("贴吧解析"))
+        self.assertEqual(config.admin.clean_cache_keyword, "自定义清缓存")
+        self.assertEqual(config.message.archive.command, "自定义归档")
+        self.assertEqual(raw["trigger"]["keywords"], [])
 
     def test_each_output_mode_injects_media_and_reply_options(self):
         for mode, expected in {
@@ -154,7 +190,7 @@ class StandaloneConfigTests(unittest.TestCase):
     def test_invalid_root_parser_and_permission_config_fail_closed(self):
         config = make_config([])
         self.assertEqual(config.create_parsers(), [])
-        self.assertFalse(config.trigger.should_parse("爱丽丝贴吧解析"))
+        self.assertFalse(config.trigger.should_parse("贴吧解析"))
         self.assertFalse(config.permission.check(True, "42", ""))
         for parsers in (None, [], {"tieba": "unknown"}):
             with self.subTest(parsers=parsers):
@@ -167,7 +203,7 @@ class StandaloneConfigTests(unittest.TestCase):
             {
                 "trigger": {
                     "auto_parse": False,
-                    "keywords": ["", "爱丽丝贴吧解析", "爱丽丝贴吧解析", None],
+                    "keywords": ["", "贴吧解析", "贴吧解析", None],
                 },
                 "permissions": {
                     "admin_id": "1",
@@ -182,7 +218,7 @@ class StandaloneConfigTests(unittest.TestCase):
             }
         )
         self.assertTrue(
-            config.trigger.should_parse("爱丽丝贴吧解析 https://tieba.baidu.com/p/1")
+            config.trigger.should_parse("贴吧解析 https://tieba.baidu.com/p/1")
         )
         self.assertFalse(config.trigger.should_parse("普通消息"))
         self.assertTrue(config.permission.check(False, "2", "100"))
@@ -192,7 +228,7 @@ class StandaloneConfigTests(unittest.TestCase):
         self.assertEqual(config.parse_rate_limit.retention_seconds, 60)
         self.assertEqual(config.message.archive.command, "贴吧归档")
         self.assertEqual(config.message.archive.max_total_size_mb, 512)
-        conflict = make_config({"message": {"archive": {"command": "清理爱丽丝贴吧缓存"}}})
+        conflict = make_config({"message": {"archive": {"command": "清理贴吧缓存"}}})
         self.assertEqual(conflict.message.archive.command, "")
 
     def test_custom_cache_and_runtime_use_independent_locations(self):

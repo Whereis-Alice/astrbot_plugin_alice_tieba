@@ -19,7 +19,7 @@ from plugin_test_support import (
 @pytest.mark.parametrize("text", [
     "https://www.bilibili.com/video/BV1x1", "https://x.com/user/status/1",
     "https://tieba.baidu.com.evil.example/p/11180655858", "https://zhihu.com/question/123",
-    "爱丽丝贴吧解析 https://store.steampowered.com/app/123/", "你好", "更新 B站Cookie",
+    "贴吧解析 https://store.steampowered.com/app/123/", "你好", "更新 B站Cookie",
 ])
 def test_unrelated_messages_do_not_parse_or_send(tmp_path, monkeypatch, text):
     async def run():
@@ -53,13 +53,14 @@ def test_automatic_text_only_thread_is_sent_to_current_event(tmp_path, monkeypat
     asyncio.run(run())
 
 
-def test_manual_trigger_and_json_card_use_tieba_links_only(tmp_path, monkeypatch):
+@pytest.mark.parametrize("keyword", ["贴吧解析", "解析贴吧", "/贴吧解析", "/解析贴吧"])
+def test_manual_trigger_and_json_card_use_tieba_links_only(tmp_path, monkeypatch, keyword):
     async def run():
         plugin = make_plugin(tmp_path, trigger={"auto_parse": False})
         parse, _, _ = fake_network(monkeypatch, plugin)
         await plugin.auto_parse(FakeEvent())
         parse.assert_not_awaited()
-        event = FakeEvent("爱丽丝贴吧解析", messages=[Json(data={
+        event = FakeEvent(keyword, messages=[Json(data={
             "meta": {"news": {"jumpUrl": TIEBA_URL}},
         })])
         await plugin.auto_parse(event)
@@ -71,7 +72,8 @@ def test_manual_trigger_and_json_card_use_tieba_links_only(tmp_path, monkeypatch
     asyncio.run(run())
 
 
-def test_reply_trigger_parses_embedded_card_and_quotes_source(tmp_path, monkeypatch):
+@pytest.mark.parametrize("keyword", ["贴吧解析", "解析贴吧"])
+def test_reply_trigger_parses_embedded_card_and_quotes_source(tmp_path, monkeypatch, keyword):
     async def run():
         plugin = make_plugin(tmp_path, trigger={"auto_parse": False, "reply_trigger": True})
         plugin.config_manager.message.text_metadata.quote_user_message = True
@@ -79,11 +81,40 @@ def test_reply_trigger_parses_embedded_card_and_quotes_source(tmp_path, monkeypa
         reply = Reply(id="quoted-message", message_str="", chain=[Json(data={
             "meta": {"detail_1": {"qqdocurl": TIEBA_URL}},
         })])
-        event = FakeEvent("爱丽丝解析贴吧", messages=[reply])
+        event = FakeEvent(keyword, messages=[reply])
         await plugin.auto_parse(event)
         parse.assert_awaited_once()
         assert any(isinstance(component, Reply) and component.id == "quoted-message"
                    for component in sent_components(event))
+        await plugin.terminate()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("keyword", ["贴吧解析", "解析贴吧", "/贴吧解析", "/解析贴吧"])
+def test_manual_keyword_parses_direct_link_without_auto_parse(tmp_path, monkeypatch, keyword):
+    async def run():
+        plugin = make_plugin(tmp_path, trigger={"auto_parse": False})
+        parse, _, _ = fake_network(monkeypatch, plugin)
+        event = FakeEvent(f"{keyword} {TIEBA_URL}")
+        await plugin.auto_parse(event)
+        parse.assert_awaited_once()
+        assert parse.await_args.args[1] == TIEBA_URL
+        assert sent_components(event)
+        await plugin.terminate()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("prefix", ["", "/"])
+def test_subscription_target_link_is_not_automatically_parsed(tmp_path, monkeypatch, prefix):
+    async def run():
+        plugin = make_plugin(tmp_path)
+        parse, _, _ = fake_network(monkeypatch, plugin)
+        event = FakeEvent(f"{prefix}贴吧 追踪 {TIEBA_URL}")
+        await plugin.auto_parse(event)
+        parse.assert_not_awaited()
+        event.send.assert_not_awaited()
         await plugin.terminate()
 
     asyncio.run(run())

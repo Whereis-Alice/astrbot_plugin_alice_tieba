@@ -178,7 +178,7 @@ class AliceTiebaPlugin(Star):
             )
         return {"folders": folders, "files": files, "failed": failed}
 
-    @filter.command("爱丽丝贴吧")
+    @filter.command("贴吧")
     async def alice_tieba_command(self, event: AstrMessageEvent) -> None:
         """管理当前会话的贴吧订阅，或查看帮助与会话标识。"""
         if self._terminating:
@@ -213,12 +213,13 @@ class AliceTiebaPlugin(Star):
         session = event.unified_msg_origin
         help_text = (
             "爱丽丝的贴吧工具\n"
-            "爱丽丝贴吧 会话：查看当前推送会话标识\n"
-            "爱丽丝贴吧 订阅：查看当前会话订阅\n"
-            "爱丽丝贴吧 关注 <贴吧UID或作者帖子链接>：关注用户新主题帖\n"
-            "爱丽丝贴吧 追踪 <帖子链接或帖号>：追踪楼主新楼层\n"
-            "爱丽丝贴吧 暂停/恢复/取消 <订阅ID>\n"
-            "爱丽丝贴吧 检查 [订阅ID]：手动检查当前会话\n"
+            "贴吧解析 / 解析贴吧 <帖子链接>：解析帖子\n"
+            "贴吧 会话：查看当前推送会话标识\n"
+            "贴吧 订阅：查看当前会话订阅\n"
+            "贴吧 关注 <贴吧UID或作者帖子链接>：关注用户新主题帖\n"
+            "贴吧 追踪 <帖子链接或帖号>：追踪楼主新楼层\n"
+            "贴吧 暂停/恢复/取消 <订阅ID>\n"
+            "贴吧 检查 [订阅ID]：手动检查当前会话\n"
             "首次检查只记录基线；请在插件配置中开启订阅推送。\n"
             "WebUI 可设置关键词、备注和推送会话。管理操作默认仅管理员可用。"
         )
@@ -259,7 +260,7 @@ class AliceTiebaPlugin(Star):
             elif action in {"暂停", "恢复", "取消", "检查"}:
                 ids = {row["id"] for row in current}
                 if target and target not in ids:
-                    raise ValueError("未找到当前会话中的这个订阅，请先发送「爱丽丝贴吧 订阅」。")
+                    raise ValueError("未找到当前会话中的这个订阅，请先发送「贴吧 订阅」。")
                 if action == "检查":
                     outcome = await self.monitor.check_now(target or None, session=session)
                     result = outcome["message"]
@@ -1027,7 +1028,7 @@ class AliceTiebaPlugin(Star):
             return
 
         original_message_text = event.message_str or ""
-        if original_message_text.strip().lstrip("/").split(maxsplit=1)[0:1] == ["爱丽丝贴吧"]:
+        if original_message_text.strip().lstrip("/").split(maxsplit=1)[0:1] == ["贴吧"]:
             return
         parse_text = original_message_text
         quote_source_message_id = str(

@@ -207,7 +207,7 @@ def _get_astrbot_plugin_cache_dir() -> str:
 @dataclass
 class TriggerConfig:
     auto_parse: bool = False
-    keywords: list[str] = field(default_factory=lambda: ["爱丽丝贴吧解析", "爱丽丝解析贴吧"])
+    keywords: list[str] = field(default_factory=lambda: ["贴吧解析", "解析贴吧"])
     reply_trigger: bool = False
 
     def has_keyword(self, text: str) -> bool:
@@ -548,7 +548,7 @@ class TranslationConfig:
 
 @dataclass
 class AdminConfig:
-    clean_cache_keyword: str = "清理爱丽丝贴吧缓存"
+    clean_cache_keyword: str = "清理贴吧缓存"
     debug_mode: bool = False
 
 
@@ -569,6 +569,7 @@ class ConfigManager:
             }
         self._migrate_message_config(config)
         self._migrate_translation_config(config)
+        self._migrate_command_keywords(config)
         self._parse_config(config)
 
     # ── 内部解析 ────────────────────────────────────────
@@ -596,7 +597,7 @@ class ConfigManager:
                 "trigger.auto_parse",
             ),
             keywords=self._normalize_string_list(
-                trigger_raw.get("keywords", ["爱丽丝贴吧解析", "爱丽丝解析贴吧"])
+                trigger_raw.get("keywords", ["贴吧解析", "解析贴吧"])
             ),
             reply_trigger=self._parse_bool(
                 trigger_raw.get("reply_trigger", False),
@@ -1163,7 +1164,7 @@ class ConfigManager:
         admin_raw = self._as_dict(config.get("admin"))
         self.admin = AdminConfig(
             clean_cache_keyword=str(
-                admin_raw.get("clean_cache_keyword", "清理爱丽丝贴吧缓存") or "清理爱丽丝贴吧缓存"
+                admin_raw.get("clean_cache_keyword", "清理贴吧缓存") or "清理贴吧缓存"
             ).strip(),
             debug_mode=self._parse_bool(
                 admin_raw.get("debug", False),
@@ -1537,6 +1538,43 @@ class ConfigManager:
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
         return value if isinstance(value, dict) else {}
+
+    @classmethod
+    def _migrate_command_keywords(cls, config: dict[str, Any]) -> None:
+        """将旧内置指令改为通用关键词，保留自定义值和禁用设置。"""
+        changed = False
+        trigger = cls._as_dict(config.get("trigger"))
+        keywords = trigger.get("keywords")
+        legacy_keywords = {
+            "爱丽丝贴吧解析": "贴吧解析",
+            "爱丽丝解析贴吧": "解析贴吧",
+        }
+        if isinstance(keywords, list):
+            migrated = [
+                legacy_keywords.get(value, value) if isinstance(value, str) else value
+                for value in keywords
+            ]
+            if migrated != keywords:
+                trigger["keywords"] = migrated
+                changed = True
+
+        admin = cls._as_dict(config.get("admin"))
+        if admin.get("clean_cache_keyword") == "清理爱丽丝贴吧缓存":
+            admin["clean_cache_keyword"] = "清理贴吧缓存"
+            changed = True
+
+        archive = cls._as_dict(cls._as_dict(config.get("message")).get("archive"))
+        if archive.get("command") == "爱丽丝贴吧打包":
+            archive["command"] = "贴吧打包"
+            changed = True
+
+        if changed:
+            save_config = getattr(config, "save_config", None)
+            if callable(save_config):
+                try:
+                    save_config()
+                except Exception as exc:
+                    logger.warning(f"保存指令关键词迁移结果失败: {exc}")
 
     @classmethod
     def _migrate_message_config(cls, config: dict[str, Any]) -> None:
