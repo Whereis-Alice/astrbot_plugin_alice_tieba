@@ -264,6 +264,7 @@ def test_legacy_shim_reexports_design_system_enums() -> None:
         "gallery",
         "nocturne",
         "bilibili",
+        "tieba",
         "x",
         "youtube",
     )
@@ -351,7 +352,7 @@ def test_theme_and_layout_changes_produce_different_cards_and_cache_paths(
                 assert path not in cache_paths, f"{combo} 与 {cache_paths.get(path)} 缓存路径相同"
                 cache_paths[path] = combo
 
-    assert len(digests) == len(cache_paths) == 2 * len(THEME_KEYS) * len(LAYOUT_KEYS) == 64
+    assert len(digests) == len(cache_paths) == 2 * len(THEME_KEYS) * len(LAYOUT_KEYS)
 
 
 # ============================ 媒体编排 ============================
@@ -1033,7 +1034,7 @@ def test_renderer_hands_the_auto_sentinel_to_the_engine(
 
 
 #: 五套通用皮肤（不含 bilibili / x / youtube 三套仿站皮肤）
-GENERIC_THEMES = tuple(k for k in THEME_KEYS if k not in ("bilibili", "x", "youtube"))
+GENERIC_THEMES = tuple(k for k in THEME_KEYS if k not in ("bilibili", "x", "youtube", "tieba"))
 
 
 @pytest.mark.parametrize("layout", LAYOUT_KEYS)

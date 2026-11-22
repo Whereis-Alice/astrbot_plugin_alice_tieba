@@ -197,6 +197,10 @@ def build_parse_result(
     contents: List[Any] = []
     graphics: List[Any] = []
     extra: Dict[str, Any] = {}
+    if platform_name == "tieba" and text_metadata_field_enabled(metadata, "author"):
+        extra["forum_name"] = str(metadata.get("forum_name") or "").strip()[:64]
+        extra["author_level"] = str(metadata.get("author_level") or "").strip()[:12]
+        extra["ip_location"] = str(metadata.get("ip_location") or "").strip()[:32]
 
     video_urls = metadata.get("video_urls") or []
     image_urls = metadata.get("image_urls") or []

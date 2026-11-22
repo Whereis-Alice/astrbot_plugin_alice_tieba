@@ -1,7 +1,7 @@
 name: astrbot_plugin_alice_tieba
 display_name: 爱丽丝的贴吧工具
 desc: 贴吧图文视频解析、用户新帖关注、楼主更新追踪与四主题 WebUI 管理。
-version: v2.0.1
+version: v2.1.0
 author: Whereis-Alice
 repo: https://github.com/Whereis-Alice/astrbot_plugin_alice_tieba
 astrbot_version: ">=4.25.0,<5"

@@ -167,6 +167,9 @@ class CardModel:
     url: str = ""
     watermark: str = ""
     total_media: int = 0
+    forum_name: str = ""
+    author_level: str = ""
+    ip_location: str = ""
 
     @property
     def has_media(self) -> bool:
@@ -340,4 +343,7 @@ def build_model(
         url=str(getattr(result, "url", "") or "").strip() if show_url else "",
         watermark=str(watermark or "").strip() if show_watermark else "",
         total_media=total_media,
+        forum_name=clean_text(str(extra.get("forum_name") or "")),
+        author_level=clean_text(str(extra.get("author_level") or "")),
+        ip_location=clean_text(str(extra.get("ip_location") or "")),
     )

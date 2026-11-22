@@ -6,7 +6,7 @@ from alice_tieba_core.card import build_model
 from test_card_skins import render_probe
 
 
-@pytest.mark.parametrize("theme_key", ["aurora", "bilibili", "x"])
+@pytest.mark.parametrize("theme_key", ["aurora", "bilibili", "x", "tieba"])
 def test_tieba_card_labels_first_batch_and_keeps_real_floor(theme_key):
     result = SimpleNamespace(
         platform=SimpleNamespace(name="tieba", display_name="贴吧"),
@@ -24,6 +24,10 @@ def test_tieba_card_labels_first_batch_and_keeps_real_floor(theme_key):
     probe = render_probe(model, theme_key=theme_key, width=640)
     assert "楼层回复" in probe.joined_text
     assert "2楼" in probe.joined_text
-    assert "未知" in probe.joined_text
+    if theme_key != "tieba":
+        assert "未知" in probe.joined_text
+    else:
+        assert "未知" not in probe.joined_text
+        assert "首屏预览" in probe.joined_text
     if theme_key in {"bilibili", "x"}:
         assert "首批回复" in probe.joined_text

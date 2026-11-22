@@ -34,10 +34,69 @@ class MessageSender:
         *,
         group_file_timeout_seconds: int = Config.DEFAULT_GROUP_FILE_TIMEOUT_SECONDS,
         group_file_uploader: Optional[GroupFileUploader] = None,
+        qqofficial_image_gallery: bool = True,
     ):
         self.group_file_uploader = group_file_uploader or GroupFileUploader(
             group_file_timeout_seconds
         )
+        self.qqofficial_image_gallery = qqofficial_image_gallery
+
+    @staticmethod
+    def _is_qqofficial(event: AstrMessageEvent) -> bool:
+        get_platform = getattr(event, "get_platform_name", None)
+        return callable(get_platform) and get_platform() == "qq_official"
+
+    def _chains_for_event(self, event: AstrMessageEvent, nodes: list, metadata: dict) -> list[list]:
+        chains = self._delivery_chains(nodes, metadata)
+        if not self._is_qqofficial(event):
+            return chains
+        # 官方 Bot 的卡片独立投递；只有帖子里的原图组成后续图库。
+        card = metadata.get("card_node")
+        images = []
+        result = []
+        gallery_index = None
+        for chain in chains:
+            if chain and all(isinstance(node, Image) and node is not card for node in chain):
+                if gallery_index is None:
+                    gallery_index = len(result)
+                    result.append([])
+                images.extend(chain)
+            else:
+                result.append(chain)
+        if gallery_index is not None:
+            if self.qqofficial_image_gallery:
+                result[gallery_index] = images
+            else:
+                result[gallery_index:gallery_index + 1] = [[image] for image in images]
+        return result
+
+    async def _send_content(self, event: AstrMessageEvent, chain: list) -> None:
+        if (
+            self._is_qqofficial(event)
+            and self.qqofficial_image_gallery
+            and len(chain) > 1
+            and all(isinstance(node, Image) for node in chain)
+        ):
+            from .qqofficial import QQOfficialGalleryError, send_qqofficial_gallery
+
+            try:
+                await send_qqofficial_gallery(event, chain)
+                return
+            except Exception as exc:
+                if isinstance(exc, QQOfficialGalleryError) and exc.may_have_been_sent:
+                    # 接口超时后无法判断平台是否已接受，不能再发送整批原图。
+                    raise
+                logger.warning(f"QQ 官方 Bot 图库不可用，改为逐图发送: {type(exc).__name__}")
+                errors = []
+                for image in chain:
+                    try:
+                        await event.send(event.chain_result([image]))
+                    except Exception as send_error:
+                        errors.append(send_error)
+                if errors:
+                    raise MessageDeliveryError(f"原图逐图投递有 {len(errors)}/{len(chain)} 张失败") from errors[0]
+                return
+        await event.send(event.chain_result(chain))
 
     def can_upload_group_file(self, event: AstrMessageEvent) -> bool:
         return self.group_file_uploader.can_upload(event)
@@ -290,6 +349,11 @@ class MessageSender:
             sender_id: 发送者ID
             large_video_threshold_mb: 大视频阈值(MB)
         """
+        if self._is_qqofficial(event):
+            await self.send_individual_results(
+                event, [meta.get("link_nodes") or [] for meta in link_metadata], link_metadata
+            )
+            return
         normal_metadata = [
             meta for meta in link_metadata if meta.get("is_normal", True)
         ]
@@ -406,7 +470,8 @@ class MessageSender:
         errors: list[Exception] = []
         failed_urls: List[str] = []
         for link_idx, metadata in enumerate(link_metadata):
-            chains = self._delivery_chains(
+            chains = self._chains_for_event(
+                event,
                 metadata.get("link_nodes") or [],
                 metadata,
             )
@@ -415,7 +480,7 @@ class MessageSender:
                     continue
                 expected += 1
                 try:
-                    await event.send(event.chain_result(content))
+                    await self._send_content(event, content)
                     succeeded += 1
                 except Exception as e:
                     errors.append(e)
@@ -457,7 +522,7 @@ class MessageSender:
             meta = self._metadata_for_link(link_metadata, link_idx)
             chains = [
                 content
-                for content in self._delivery_chains(link_nodes, meta)
+                for content in self._chains_for_event(event, link_nodes, meta)
                 if content
             ]
             if chains:
@@ -477,7 +542,7 @@ class MessageSender:
                     chain.append(Reply(id=quote_message_id))
                 chain.extend(content)
                 try:
-                    await event.send(event.chain_result(chain))
+                    await self._send_content(event, chain)
                     succeeded += 1
                 except Exception as exc:
                     errors.append(exc)

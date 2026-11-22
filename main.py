@@ -96,7 +96,8 @@ class AliceTiebaPlugin(Star):
         )
 
         self.message_sender = MessageSender(
-            group_file_timeout_seconds=cfg.download.group_file_timeout_seconds
+            group_file_timeout_seconds=cfg.download.group_file_timeout_seconds,
+            qqofficial_image_gallery=cfg.message.qqofficial_image_gallery,
         )
         self._cleanup_tasks: set[asyncio.Task] = set()
         self._event_tasks: set[asyncio.Task] = set()

@@ -53,7 +53,7 @@ DEFAULT_WATERMARK_TAG = "爱丽丝贴吧解析"
 #: 卡片样式版本：视觉变化时必须 +1，否则用户侧已缓存的旧卡片不会重新渲染。
 #: 19 = 全新 alice_tieba_core.card 设计系统（主题 / 布局 / 深浅色三者全部生效）。
 #: 25 = 修复「跟随平台」被提前归一成极光；通用皮肤眉标去掉平台徽章与类型标签。
-_CARD_STYLE_VERSION = "25"
+_CARD_STYLE_VERSION = "26"
 
 #: 布局与风格枚举（直接取自设计系统，避免两处枚举漂移）
 LAYOUT_NAMES: tuple[str, ...] = LAYOUT_KEYS

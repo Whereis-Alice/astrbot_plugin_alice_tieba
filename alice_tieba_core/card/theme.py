@@ -295,6 +295,30 @@ BILIBILI = ThemeRecipe(
     ),
 )
 
+TIEBA = ThemeRecipe(
+    key="tieba",
+    label="贴吧帖子",
+    palette_key="tieba",
+    density="normal",
+    backdrop="plain",
+    ornament=(),
+    panel="none",
+    ornament_frame="none",
+    eyebrow="tieba",
+    identity="tieba",
+    headline="tieba",
+    body="tieba",
+    media="tieba",
+    stats="tieba",
+    comments="tieba",
+    footer="tieba",
+    accent_source="fixed",
+    accent_fixed=hex_to_rgb("#466EFA"),
+    accent_adjust=False,
+    brand="tieba",
+    radius_scale=0.75,
+)
+
 X = ThemeRecipe(
     key="x",
     label="X（推特）",
@@ -357,6 +381,7 @@ THEMES: dict[str, ThemeRecipe] = {
     "gallery": GALLERY,
     "nocturne": NOCTURNE,
     "bilibili": BILIBILI,
+    "tieba": TIEBA,
     "x": X,
     "youtube": YOUTUBE,
 }
@@ -423,6 +448,10 @@ THEME_ALIASES: dict[str, str] = {
     "小电视": "bilibili",
     "b站风格": "bilibili",
     "bilibili风格": "bilibili",
+    "贴吧": "tieba",
+    "贴吧帖子": "tieba",
+    "贴吧风格": "tieba",
+    "贴吧帖子风格": "tieba",
     "twitter": "x",
     "tweet": "x",
     "推特": "x",
@@ -470,7 +499,7 @@ PLATFORM_THEMES: dict[str, str] = {
     "xiaohongshu": "bilibili",
     "xiaoheihe": "bilibili",
     "nga": "bilibili",
-    "tieba": "bilibili",
+    "tieba": "tieba",
     "toutiao": "bilibili",
     "xianyu": "bilibili",
     "douyin": "bilibili",

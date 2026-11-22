@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, patch
 from alice_tieba_core.config_manager import (
     CARD_MODE_ONLY,
     CARD_SKIN_AUTO,
+    CARD_SKIN_TIEBA,
     CARD_SKINS,
     OVERSIZE_DELIVERY_ORIGINAL_FILE,
     PARSER_OUTPUT_KEYS,
@@ -68,6 +69,9 @@ class StandaloneConfigTests(unittest.TestCase):
         self.assertFalse(config.message.hot_comments.show_in_text)
         self.assertFalse(config.translation.enabled)
         self.assertFalse(config.trigger.auto_parse)
+        self.assertEqual(config.message.card_render.skin, CARD_SKIN_TIEBA)
+        self.assertEqual(config.message.card_render.theme, "light")
+        self.assertTrue(config.message.qqofficial_image_gallery)
         self.assertEqual(config.trigger.keywords, ["贴吧解析", "解析贴吧"])
         self.assertEqual(config.admin.clean_cache_keyword, "清理贴吧缓存")
 
@@ -121,6 +125,23 @@ class StandaloneConfigTests(unittest.TestCase):
         self.assertEqual(config.admin.clean_cache_keyword, "自定义清缓存")
         self.assertEqual(config.message.archive.command, "自定义归档")
         self.assertEqual(raw["trigger"]["keywords"], [])
+
+    def test_old_tieba_skin_resolves_to_tieba_and_migration_is_idempotent(self):
+        class SavedConfig(dict):
+            saves = 0
+
+            def save_config(self):
+                self.saves += 1
+
+        raw = SavedConfig({"message": {"card_render": {"skin": "bilibili", "theme": "深色"}}})
+        config = make_config(raw)
+        self.assertEqual(config.message.card_render.skin, CARD_SKIN_TIEBA)
+        self.assertEqual(config.message.card_render.theme, "dark")
+        self.assertEqual(raw.saves, 1)
+        make_config(raw)
+        self.assertEqual(raw.saves, 1)
+        self.assertEqual(ConfigManager._parse_card_skin("贴吧帖子"), CARD_SKIN_TIEBA)
+        self.assertFalse(make_config({"message": {"qqofficial_image_gallery": False}}).message.qqofficial_image_gallery)
 
     def test_each_output_mode_injects_media_and_reply_options(self):
         for mode, expected in {
@@ -307,7 +328,7 @@ class StandaloneConfigTests(unittest.TestCase):
             set(schema["message"]["items"]["media_display"]["items"]),
             {"video_cover_only"},
         )
-        self.assertEqual(len(CARD_SKINS) - (CARD_SKIN_AUTO in CARD_SKINS), 7)
+        self.assertEqual(len(CARD_SKINS) - (CARD_SKIN_AUTO in CARD_SKINS), 8)
         for label in schema["message"]["items"]["card_render"]["items"]["skin"][
             "options"
         ]:

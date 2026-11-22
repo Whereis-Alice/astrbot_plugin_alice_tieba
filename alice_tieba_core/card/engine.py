@@ -376,6 +376,10 @@ def _make_block(name: str, theme: ThemeRecipe, layout: LayoutPreset, headline_sc
 
 def _assemble(ctx: RenderContext, *, drop: tuple[str, ...] = ()) -> list[blk.Block]:
     """按 theme.order + layout 组装区块树。"""
+    if ctx.theme.key == "tieba":
+        from .tieba import TiebaPostBlock
+
+        return [TiebaPostBlock()]
     theme, layout = ctx.theme, ctx.layout
     headline_scale = theme.headline_scale * layout.headline_scale
     skip = set(drop) | set(layout.drop_blocks)
@@ -514,7 +518,7 @@ def render_card_image(
     gap = m.gap_lg
 
     # --- 沉浸布局：全幅 hero ---
-    use_hero = bool(ctx.layout.immersive_hero and model.has_media)
+    use_hero = bool(ctx.layout.immersive_hero and model.has_media and ctx.theme.key != "tieba")
     hero_block: blk.ImmersiveHeroBlock | None = None
     hero_h = 0
     body_ctx = ctx

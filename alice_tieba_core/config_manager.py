@@ -117,17 +117,19 @@ CARD_SKIN_TELEMETRY = "telemetry"
 CARD_SKIN_GALLERY = "gallery"
 CARD_SKIN_NOCTURNE = "nocturne"
 CARD_SKIN_BILIBILI = "bilibili"
+CARD_SKIN_TIEBA = "tieba"
 CARD_SKIN_X = "x"
 #: 「跟随平台」哨兵：不是一套真皮肤，渲染时按来源站点现场挑仿站皮肤
 CARD_SKIN_AUTO = "auto"
-DEFAULT_CARD_SKIN = CARD_SKIN_AURORA
+DEFAULT_CARD_SKIN = CARD_SKIN_TIEBA
 CARD_SKINS: dict[str, str] = {
     CARD_SKIN_AURORA: "极光",
     CARD_SKIN_BROADSHEET: "报章",
     CARD_SKIN_TELEMETRY: "测控",
     CARD_SKIN_GALLERY: "展陈",
     CARD_SKIN_NOCTURNE: "夜曲",
-    CARD_SKIN_BILIBILI: "贴吧帖子",
+    CARD_SKIN_BILIBILI: "哔哩哔哩",
+    CARD_SKIN_TIEBA: "贴吧帖子",
     CARD_SKIN_X: "简洁消息",
     CARD_SKIN_AUTO: "跟随平台",
 }
@@ -155,7 +157,8 @@ LEGACY_CARD_SKIN_VALUES: dict[str, str] = {
     "数据终端": CARD_SKIN_TELEMETRY,
     "档案海报": CARD_SKIN_GALLERY,
     "霓虹风格": CARD_SKIN_NOCTURNE,
-    "贴吧帖子": CARD_SKIN_BILIBILI,
+    "贴吧帖子": CARD_SKIN_TIEBA,
+    "贴吧": CARD_SKIN_TIEBA,
     "简洁消息": CARD_SKIN_X,
 }
 #: theme.LAYOUT_ALIASES 未收录的旧布局选项（v1.4 schema 里的“信息流”）。
@@ -350,7 +353,7 @@ class CardRenderConfig:
     mode: str = CARD_MODE_ONLY
     custom_font: str = ""
     save_dir: str = ""
-    theme: str = "dark"
+    theme: str = "light"
     layout: str = DEFAULT_CARD_LAYOUT
     skin: str = DEFAULT_CARD_SKIN
     width: int = 800
@@ -373,6 +376,7 @@ class CardRenderConfig:
 
 @dataclass
 class MessageConfig:
+    qqofficial_image_gallery: bool = True
     opening: OpeningMessageConfig = field(default_factory=OpeningMessageConfig)
     aggregation: AggregationConfig = field(default_factory=AggregationConfig)
     archive: ArchiveConfig = field(default_factory=ArchiveConfig)
@@ -570,6 +574,7 @@ class ConfigManager:
         self._migrate_message_config(config)
         self._migrate_translation_config(config)
         self._migrate_command_keywords(config)
+        self._migrate_tieba_card_skin(config)
         self._parse_config(config)
 
     # ── 内部解析 ────────────────────────────────────────
@@ -671,6 +676,11 @@ class ConfigManager:
         # 保留用户配置的数量；聊天输出限制在解析器创建时应用，归档仍可读取回复。
 
         self.message = MessageConfig(
+            qqofficial_image_gallery=self._parse_bool(
+                message_raw.get("qqofficial_image_gallery", True),
+                True,
+                "message.qqofficial_image_gallery",
+            ),
             opening=OpeningMessageConfig(
                 enabled=self._parse_bool(
                     opening.get("enable", True),
@@ -770,7 +780,7 @@ class ConfigManager:
                 ),
                 mode=self._parse_card_mode(card_render.get("mode", CARD_MODE_ONLY)),
                 custom_font=str(card_render.get("custom_font", "") or "").strip(),
-                theme=self._parse_card_theme(card_render.get("theme", "dark")),
+                theme=self._parse_card_theme(card_render.get("theme", "light")),
                 layout=self._parse_card_layout(
                     card_render.get("layout", DEFAULT_CARD_LAYOUT)
                 ),
@@ -1538,6 +1548,20 @@ class ConfigManager:
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
         return value if isinstance(value, dict) else {}
+
+    @classmethod
+    def _migrate_tieba_card_skin(cls, config: dict[str, Any]) -> None:
+        """把旧贴吧插件中的 B 站皮肤标识迁移到贴吧专用样式。"""
+        card = cls._as_dict(cls._as_dict(config.get("message")).get("card_render"))
+        if str(card.get("skin", "")).strip().lower() != "bilibili":
+            return
+        card["skin"] = "贴吧帖子"
+        save_config = getattr(config, "save_config", None)
+        if callable(save_config):
+            try:
+                save_config()
+            except Exception as exc:
+                logger.warning(f"保存贴吧卡片皮肤迁移结果失败: {exc}")
 
     @classmethod
     def _migrate_command_keywords(cls, config: dict[str, Any]) -> None:
