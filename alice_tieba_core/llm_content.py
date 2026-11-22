@@ -303,6 +303,37 @@ def _media_groups(value: Any) -> tuple[list[dict[str, Any]], bool]:
     return groups, truncated
 
 
+def _add_media_fields(
+    result: dict, metadata: dict, *, inherited_headers: dict | None = None
+) -> None:
+    """Keep main-floor and reply media on the same credential-free contract."""
+    for output, inputs in (
+        ("images", ("image_urls",)),
+        ("videos", ("video_urls",)),
+        ("covers", ("video_cover_urls", "video_cover_url_lists")),
+    ):
+        groups = []
+        seen = set()
+        header_field = "video_headers" if output == "videos" else "image_headers"
+        headers = metadata.get(header_field)
+        if headers is None and isinstance(inherited_headers, dict):
+            headers = inherited_headers.get(header_field)
+        requires_headers = isinstance(headers, dict) and bool(headers)
+        for field in inputs:
+            additions, truncated = _media_groups(metadata.get(field))
+            if truncated:
+                result["truncated"] = True
+            for group in additions:
+                if requires_headers:
+                    group["requires_headers"] = True
+                key = json.dumps(group, sort_keys=True)
+                if key not in seen:
+                    seen.add(key)
+                    groups.append(group)
+        if groups:
+            result[output] = groups
+
+
 def sanitize_metadata(
     metadata: dict, *, include_media: bool = True, max_comments: int = 5
 ) -> dict:
@@ -358,6 +389,17 @@ def sanitize_metadata(
                 clean["level"] = comment["level"]
             if url := _safe_url(comment.get("url")):
                 clean["url"] = url
+            comment_id = comment.get("comment_id")
+            if (
+                isinstance(comment_id, str)
+                and re.fullmatch(r"[0-9]{1,20}", comment_id)
+                or type(comment_id) is int and 0 <= comment_id < 10**20
+            ):
+                clean["comment_id"] = str(comment_id)
+            if comment.get("comment_kind") == "floor":
+                clean["comment_kind"] = "floor"
+            if include_media:
+                _add_media_fields(clean, comment, inherited_headers=metadata)
             if clean:
                 sanitized_comments.append(clean)
                 if len(sanitized_comments) > count:
@@ -368,30 +410,7 @@ def sanitize_metadata(
             result["truncated"] = True
 
     if include_media:
-        for output, inputs in (
-            ("images", ("image_urls",)),
-            ("videos", ("video_urls",)),
-            ("covers", ("video_cover_urls", "video_cover_url_lists")),
-        ):
-            groups = []
-            seen = set()
-            headers = metadata.get(
-                "video_headers" if output == "videos" else "image_headers"
-            )
-            requires_headers = isinstance(headers, dict) and bool(headers)
-            for field in inputs:
-                additions, truncated = _media_groups(metadata.get(field))
-                if truncated:
-                    result["truncated"] = True
-                for group in additions:
-                    if requires_headers:
-                        group["requires_headers"] = True
-                    key = json.dumps(group, sort_keys=True)
-                    if key not in seen:
-                        seen.add(key)
-                        groups.append(group)
-            if groups:
-                result[output] = groups
+        _add_media_fields(result, metadata)
     return result
 
 

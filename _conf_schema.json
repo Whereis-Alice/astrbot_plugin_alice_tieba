@@ -50,12 +50,34 @@
   "llm_tool": {
     "description": "LLM 内容抓取工具",
     "type": "object",
-    "hint": "允许模型读取贴吧正文、作者、楼层回复与媒体地址。回复条数由工具参数决定，省略时读取 5 条，支持 0–20 条；仍遵守贴吧回复开关。遵守平台关闭、用户权限、解析限流、Cookie 与代理设置；聊天文本、卡片和富媒体展示模式不会裁剪工具内容。",
+    "hint": "允许模型读取贴吧正文、作者、回复图片和媒体地址，默认把主楼及回复图片作为视觉输入。需要使用支持图片输入与工具调用的模型；模型可用 AstrBot 原生发消息工具投递图片。遵守用户权限、限流、Cookie 与代理配置，不自动向聊天发图。",
     "items": {
       "enabled": {
         "description": "启用内容抓取工具",
         "type": "bool",
         "default": true
+      },
+      "image_vision": {
+        "description": "图片作为模型视觉输入",
+        "type": "bool",
+        "hint": "把楼主与回复图片交给支持视觉的模型查看；关闭后只返回图片地址。",
+        "default": true
+      },
+      "max_images": {
+        "description": "单次视觉图片上限",
+        "type": "int",
+        "min": 1,
+        "max": 24,
+        "hint": "主楼与回复合计，范围 1–24；工具可选择更少。未附带图片仍返回地址与跳过原因。",
+        "default": 12
+      },
+      "max_image_size_mb": {
+        "description": "单图下载大小上限（MiB）",
+        "type": "int",
+        "min": 1,
+        "max": 10,
+        "hint": "范围 1–10。图片会适当缩小以控制模型输入，原图地址仍保留。",
+        "default": 10
       },
       "max_links": {
         "description": "单次最多解析链接数",

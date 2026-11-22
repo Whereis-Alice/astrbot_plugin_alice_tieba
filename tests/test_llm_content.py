@@ -208,6 +208,61 @@ class MetadataSanitizingTests(unittest.TestCase):
         self.assertEqual(clean["username"], "孤独的滑膛枪")
         self.assertNotIn("SECRET", json.dumps(result))
 
+    def test_reply_media_uses_main_contract_without_credentials_or_main_image_merging(self):
+        metadata = {
+            "image_urls": [["https://tiebapic.baidu.com/main.jpg"]],
+            "image_headers": {"Cookie": "SECRET"},
+            "hot_comments": [{
+                "floor": 7, "comment_id": "123456789", "comment_kind": "floor",
+                "message": "【图片回复：2张】", "position_text": "第 7 楼",
+                "image_urls": [
+                    ["https://tiebapic.baidu.com/reply.jpg?tbpicau=business",
+                     "https://tiebapic.baidu.com/preview.webp"],
+                    ["https://tiebapic.baidu.com/reply2.jpg"],
+                    ["http://127.0.0.1/private.jpg"],
+                    ["https://tiebapic.baidu.com/leak.jpg?Cookie=SECRET"],
+                ],
+                "video_urls": [["https://tb-video.bdstatic.com/reply.mp4"]],
+                "video_cover_urls": [["https://tiebapic.baidu.com/cover.jpg"]],
+                "image_headers": {"Authorization": "SECRET"},
+                "video_headers": {"Cookie": "SECRET"},
+                "file_paths": ["D:/private/SECRET"],
+            }],
+        }
+        original = copy.deepcopy(metadata)
+        result = sanitize_metadata(metadata)
+        self.assertEqual(result["images"][0]["candidates"][0]["url"], "https://tiebapic.baidu.com/main.jpg")
+        reply = result["hot_comments"][0]
+        self.assertEqual(reply["floor"], 7)
+        self.assertEqual(reply["comment_id"], "123456789")
+        self.assertEqual(reply["comment_kind"], "floor")
+        self.assertEqual(len(reply["images"]), 2)
+        self.assertEqual(len(reply["images"][0]["candidates"]), 2)
+        self.assertTrue(reply["images"][0]["requires_headers"])
+        self.assertEqual(reply["videos"][0]["candidates"][0]["url"], "https://tb-video.bdstatic.com/reply.mp4")
+        self.assertTrue(reply["covers"])
+        self.assertNotIn("SECRET", json.dumps(result))
+        self.assertEqual(metadata, original)
+        text_only = sanitize_metadata(metadata, include_media=False)
+        self.assertNotIn("images", text_only)
+        for field in ("images", "videos", "covers"):
+            self.assertNotIn(field, text_only["hot_comments"][0])
+        self.assertEqual(text_only["hot_comments"][0]["message"], reply["message"])
+        self.assertNotIn("hot_comments", sanitize_metadata(metadata, max_comments=0))
+
+    def test_pure_image_reply_and_media_budget_remain_discoverable(self):
+        result = sanitize_metadata({"hot_comments": [{
+            "floor": 3, "comment_id": "987654321",
+            "image_urls": [[f"https://tiebapic.baidu.com/{index}.png"] for index in range(101)],
+        }]})
+        reply = result["hot_comments"][0]
+        self.assertEqual(reply["floor"], 3)
+        self.assertEqual(len(reply["images"]), 100)
+        self.assertTrue(reply["truncated"])
+        self.assertNotIn("images", sanitize_metadata({"hot_comments": [{
+            "floor": 3, "image_urls": [["data:image/png;base64,SECRET"]],
+        }]})["hot_comments"][0])
+
     def test_real_main_floor_fixture_keeps_body_forum_stats_and_image_alternatives(self):
         metadata = fixture_metadata()
         result = sanitize_metadata(metadata)

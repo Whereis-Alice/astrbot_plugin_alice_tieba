@@ -361,7 +361,8 @@ class TiebaParser(BaseVideoParser):
 
     @classmethod
     def _replies(
-        cls, posts: list[Any], users: dict[str, dict[str, Any]], count: int
+        cls, posts: list[Any], users: dict[str, dict[str, Any]], count: int,
+        *, include_media: bool = True,
     ) -> list[dict[str, Any]]:
         if count <= 0:
             return []
@@ -379,7 +380,7 @@ class TiebaParser(BaseVideoParser):
                 or post.get("is_deleted") in (True, 1, "1")
             ):
                 continue
-            message, _, videos, image_count = cls._content(post.get("content"))
+            message, images, videos, image_count = cls._content(post.get("content"))
             summaries = []
             if image_count:
                 summaries.append(f"【图片回复：{image_count}张】")
@@ -402,22 +403,38 @@ class TiebaParser(BaseVideoParser):
                 _text(user.get("name_show") or user.get("name")).strip() or "贴吧用户"
             )
             uid = str(user.get("id") or post.get("author_id") or "")
-            replies.append(
-                {
-                    "username": username,
-                    "author": username,
-                    "uid": uid,
-                    "user_id": uid,
-                    "avatar_url": cls._avatar(user),
-                    "message": message,
-                    "likes": _number(_object(post.get("agree")).get("agree_num")),
-                    "time": _timestamp(post.get("time")),
-                    "position_text": f"第 {floor} 楼",
-                    "floor": floor,
-                    "comment_kind": "floor",
-                    "comment_id": comment_id,
-                }
-            )
+            reply = {
+                "username": username,
+                "author": username,
+                "uid": uid,
+                "user_id": uid,
+                "avatar_url": cls._avatar(user),
+                "message": message,
+                "likes": _number(_object(post.get("agree")).get("agree_num")),
+                "time": _timestamp(post.get("time")),
+                "position_text": f"第 {floor} 楼",
+                "floor": floor,
+                "comment_kind": "floor",
+                "comment_id": comment_id,
+            }
+            if include_media:
+                if images:
+                    reply["image_urls"] = images
+                video_urls = []
+                video_covers = []
+                seen_videos = set()
+                for video in videos:
+                    video_url = cls._media_url(video.get("video_url"), video=True)
+                    if not video_url or video_url in seen_videos:
+                        continue
+                    seen_videos.add(video_url)
+                    video_urls.append([video_url])
+                    cover = cls._media_url(video.get("thumbnail_url"))
+                    video_covers.append([cover] if cover else [])
+                if video_urls:
+                    reply["video_urls"] = video_urls
+                    reply["video_cover_urls"] = video_covers
+            replies.append(reply)
             if len(replies) >= count:
                 break
         return replies
@@ -562,7 +579,10 @@ class TiebaParser(BaseVideoParser):
                 )
             if self.hot_comment_count:
                 try:
-                    replies = self._replies(posts, users, self.hot_comment_count)
+                    replies = self._replies(
+                        posts, users, self.hot_comment_count,
+                        include_media=self.include_media,
+                    )
                     if replies:
                         result.update(
                             hot_comments=replies, comment_section_title="楼层回复"

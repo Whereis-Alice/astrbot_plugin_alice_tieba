@@ -525,6 +525,9 @@ class LLMToolConfig:
     max_output_chars: int = 24000
     timeout_seconds: int = 45
     max_concurrent_calls: int = 2
+    image_vision: bool = True
+    max_images: int = 12
+    max_image_size_mb: int = 10
 
 
 @dataclass
@@ -643,6 +646,15 @@ class ConfigManager:
             ),
             max_concurrent_calls=self._parse_llm_tool_limit(
                 llm_tool_raw.get("max_concurrent_calls", 2), 2, 1, 4
+            ),
+            image_vision=self._parse_bool(
+                llm_tool_raw.get("image_vision", True), False, "llm_tool.image_vision"
+            ),
+            max_images=self._parse_llm_tool_limit(
+                llm_tool_raw.get("max_images", 12), 12, 1, 24
+            ),
+            max_image_size_mb=self._parse_llm_tool_limit(
+                llm_tool_raw.get("max_image_size_mb", 10), 10, 1, 10
             ),
         )
 

@@ -511,7 +511,8 @@ class TiebaParserTests(unittest.TestCase):
         reply = result["hot_comments"][0]
         self.assertIn("按我图中顺序走就能到了", reply["message"])
         self.assertIn("【图片回复：5张】", reply["message"])
-        self.assertNotIn("image_urls", reply)
+        self.assertEqual(len(reply["image_urls"]), 5)
+        self.assertIn("8ba6e7cd", str(reply["image_urls"]))
 
     def test_real_video_type_5_and_thread_video_are_deduplicated(self):
         result = self.parse_fixture("11127878360")
@@ -561,6 +562,10 @@ class TiebaParserTests(unittest.TestCase):
                 self.assertEqual(result["video_cover_urls"], [])
                 self.assertTrue(result["cover_url"])
                 self.assertTrue(result["hot_comments"])
+                for reply in result["hot_comments"]:
+                    self.assertNotIn("image_urls", reply)
+                    self.assertNotIn("video_urls", reply)
+                    self.assertNotIn("video_cover_urls", reply)
                 self.assertEqual(parser._fetch_json.await_count, 1)
 
     def test_zero_comments_skips_reply_extraction(self):
@@ -604,12 +609,14 @@ class TiebaParserTests(unittest.TestCase):
         result = self.parse_fixture(response=data)
         self.assertEqual([r["floor"] for r in result["hot_comments"]], [2])
 
-    def test_pure_media_reply_has_real_summary_without_media_leak(self):
+    def test_pure_media_reply_has_real_summary_and_separate_originals(self):
         data = copy.deepcopy(REAL_RESPONSES["11180655858"])
         data["post_list"][1]["content"] = [
-            {"type": 3, "origin_src": "https://tiebapic.baidu.com/reply.jpg"},
+            {"type": 3, "origin_src": "https://tiebapic.baidu.com/reply.jpg",
+             "big_cdn_src": "https://tiebapic.baidu.com/reply-thumb.jpg"},
             {"type": 3, "origin_src": "https://tiebapic.baidu.com/reply2.jpg"},
-            {"type": 5, "link": "https://tb-video.bdstatic.com/reply.mp4"},
+            {"type": 5, "link": "https://tb-video.bdstatic.com/reply.mp4",
+             "src": "https://tiebapic.baidu.com/video-cover.jpg"},
         ]
         result = self.parse_fixture(response=data)
         self.assertEqual(
@@ -617,6 +624,27 @@ class TiebaParserTests(unittest.TestCase):
         )
         self.assertNotIn("reply.jpg", str(result["image_urls"]))
         self.assertEqual(result["video_urls"], [])
+        reply = result["hot_comments"][0]
+        self.assertEqual(reply["image_urls"], [
+            ["https://tiebapic.baidu.com/reply.jpg", "https://tiebapic.baidu.com/reply-thumb.jpg"],
+            ["https://tiebapic.baidu.com/reply2.jpg"],
+        ])
+        self.assertEqual(reply["video_urls"], [["https://tb-video.bdstatic.com/reply.mp4"]])
+        self.assertEqual(reply["video_cover_urls"], [["https://tiebapic.baidu.com/video-cover.jpg"]])
+        self.assertEqual(reply["floor"], 2)
+
+    def test_reply_media_rejects_invalid_hosts_and_deduplicates_video(self):
+        data = copy.deepcopy(REAL_RESPONSES["11180655858"])
+        data["post_list"][1]["content"] = [
+            {"type": 0, "text": "正文"},
+            {"type": 3, "origin_src": "https://127.0.0.1/private.png"},
+            {"type": 5, "link": "https://tb-video.bdstatic.com/reply.mp4"},
+            {"type": 5, "link": "https://tb-video.bdstatic.com/reply.mp4"},
+            {"type": 5, "link": "https://tiebapic.baidu.com/not-video.mp4"},
+        ]
+        reply = self.parse_fixture(response=data)["hot_comments"][0]
+        self.assertNotIn("image_urls", reply)
+        self.assertEqual(reply["video_urls"], [["https://tb-video.bdstatic.com/reply.mp4"]])
 
     def test_missing_or_wrong_main_floor_cannot_send_a_reply_as_body(self):
         for mode in ("missing", "wrong_post_id"):
